@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constructor de Pedidos PRO v26 - Edición Limitada</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        :root { --primary-grad: linear-gradient(135deg, #667eea 0%, #764ba2 100%); --bg-light: rgba(255, 255, 255, 0.95); --text-dark: #2c3e50; --accent-blue: #3498db; --accent-green: #28a745; --accent-red: #dc3545; --btn-whatsapp: #25D366; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: var(--primary-grad); min-height: 100vh; }
+        .container { max-width: 1500px; margin: 0 auto; padding: 20px; }
+        .panel { background: var(--bg-light); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); }
+        h1, h3 { color: var(--text-dark); }
+        h1 { text-align: center; margin-bottom: 20px; font-size: 2.5rem; }
+        #loading-section { padding: 40px; text-align: center; }
+        #main-app { display: none; }
+        .config-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; align-items: end; }
+        .config-group label { font-weight: 600; margin-bottom: 5px; color: var(--text-dark); display: block; }
+        select, input { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s ease; background-color: white; }
+        .main-content { display: flex; flex-direction: column; gap: 20px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--primary-grad); color: white; }
+        .btn-info { background: var(--accent-blue); color: white; }
+        .btn-success { background: var(--accent-green); color: white; }
+        .btn-danger { background: var(--accent-red); color: white; }
+        .btn-whatsapp { background: var(--btn-whatsapp); color: white; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; max-height: 45vh; overflow-y: auto; padding: 5px; }
+        .product-card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+        .product-sku { font-weight: 700; color: #667eea; }
+        .product-description { font-size: 13px; color: #666; margin-bottom: 10px; }
+        .quantity-input { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+        .order-section-grid { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0; }
+        .order-total { font-size: 18px; font-weight: 700; color: var(--accent-green); }
+        .order-items { max-height: 50vh; overflow-y: auto; }
+        .order-item { background: #f8f9fa; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; align-items: center; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--accent-green); position: relative; }
+        .order-item-info .sku { font-weight: 600; color: #667eea; font-size: 14px; }
+        .order-item-info .desc { font-size: 12px; color: #666; }
+        .order-item-controls { display: flex; align-items: center; gap: 10px; }
+        .order-item-controls input[type="number"] { width: 60px; padding: 5px; text-align: center; }
+        .price-details { text-align: right; }
+        .price-details .unit-price { font-size: 12px; color: #555; display: block; }
+        .price-details .line-total { font-size: 14px; font-weight: bold; }
+        .price-override-section { display: flex; gap: 5px; align-items: center; }
+        .price-override-section select { font-size: 12px; padding: 5px; flex-grow: 1; }
+        .btn-reset { background: #f0ad4e; color: white; border: 0; border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; }
+        .btn-remove-item { position: absolute; top: 5px; right: 5px; background: var(--accent-red); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-weight: bold; cursor: pointer; line-height: 22px; text-align: center; font-size: 14px; }
+        .global-price-applicator { background: #e8f4fd; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        .global-price-applicator .controls { display: flex; gap: 10px; }
+        .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;}
+        .copy-output { background: var(--text-dark); color: #ecf0f1; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; margin-top: 10px; }
+        .filters-section { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; align-items: center;}
+        
+        @media (max-width: 900px) { .order-section-grid { grid-template-columns: 1fr; } .order-item { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading-section" class="panel">
+            <h1 style="font-size: 2rem;">Constructor de Pedidos</h1>
+            <p id="loading-status" style="color: #667eea; font-weight: 600;">Cargando catálogo desde la nube...</p>
+        </div>
+
+        <div id="main-app">
+            <div class="panel header"><h1>🛍️ Constructor de Pedidos PRO</h1>
+                <div class="config-panel">
+                    <div class="config-group"><label for="clientName">Nombre Cliente:</label><input type="text" id="clientName" placeholder="Requerido para descarga..."></div>
+                    <div class="config-group"><label>Modalidad:</label><select id="deliveryMode"><option value="RETIRO">RETIRO EN BODEGA</option><option value="ENVÍO">ENVÍO A DOMICILIO</option><option value="ENVÍO OFC">ENVÍO A OFICINA</option></select></div>
+                    <div class="config-group"><label>Documento:</label><select id="documentType"><option value="BOLETA">BOLETA</option><option value="FACTURA">FACTURA</option></select></div>
+                    <div class="config-group"><label>Mostrar Precios:</label><select id="showPrices"><option value="BRUTO">BRUTO (con IVA)</option><option value="NETO">NETO (sin IVA)</option></select></div>
+                    <div class="config-group"><label>Importar Pedido:</label><button id="importOrderBtn" class="btn btn-primary" onclick="triggerImport()">Importar</button><input type="file" id="importFile" accept=".csv" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="main-content">
+                <div class="panel catalog-section">
+                    <h3>Búsqueda de Productos</h3>
+                    <div class="filters-section">
+                        <input type="text" id="searchInput" placeholder="Buscar por SKU o descripción..." onkeyup="filterProducts()">
+                        <select id="categoryFilter" onchange="filterProducts()"><option value="">Todas las Categorías</option></select>
+                        <select id="itemsPerPage" onchange="filterProducts()"><option value="50" selected>50</option><option value="100">100</option><option value="all">Todos</option></select>
+                    </div>
+                    <div id="productsContainer"></div>
+                </div>
+
+                <div class="panel order-section">
+                    <div class="order-header"><h3>Pedido Actual</h3><div class="order-total" id="orderTotal">$0</div></div>
+                    <div class="order-section-grid">
+                        <div class="order-items" id="orderItems"></div>
+                        <div class="order-actions">
+                            <div class="global-price-applicator">
+                                <label style="font-weight:600; font-size:14px; display:block; margin-bottom:5px;">Aplicar Precio a Todo:</label>
+                                <div class="controls">
+                                    <select id="globalPriceSelector"><option value="DETALLE">DETALLE</option><option value="MAYOR">MAYOR</option><option value="PRECIOS WEBALIA">WEBALIA</option></select>
+                                    <button class="btn btn-primary" style="padding: 5px 10px;" onclick="applyGlobalPrice()">OK</button>
+                                </div>
+                            </div>
+                            <div class="actions-grid">
+                                <button class="btn btn-success" onclick="generateExcelOutput()">📋 Copiar Sistema</button>
+                                <button class="btn btn-whatsapp" onclick="generateWhatsappSummary()">💬 Copiar WhatsApp</button>
+                            </div>
+                            <button class="btn btn-primary" onclick="downloadExcel()" style="width:100%; margin-bottom:10px;">📥 Descargar Excel</button>
+                            <button class="btn btn-info" onclick="downloadBsaleCsv()" style="width:100%; margin-bottom:10px;">📄 Exportar BSale</button>
+                            <button class="btn btn-primary" onclick="generateSummaryNote()" style="width:100%; margin-bottom:10px;">📝 Nota Bodega</button>
+                            <button class="btn btn-danger" onclick="clearOrder()" style="width:100%;">🗑️ Limpiar Pedido</button>
+                            <div id="copyOutput" class="copy-output" style="display: none; margin-top: 10px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allProducts = [], pricesBySku = {}, currentOrder = [];
+
+        const CATALOG_URL = 'https://raw.githubusercontent.com/leonardo7512/CORRECTORPRECIOS/main/2708CATALOGO_ACTUALIZADO3.csv';
+
+        async function loadCatalogFromUrl() {
+            const statusEl = document.getElementById('loading-status');
+            try {
+                const urlWithCacheBuster = `${CATALOG_URL}?v=${new Date().getTime()}`;
+                const response = await fetch(urlWithCacheBuster);
+                if (!response.ok) throw new Error(`Error de red: ${response.statusText}`);
+                const csvText = await response.text();
+                Papa.parse(csvText, {
+                    delimiter: ";",
+                    skipEmptyLines: true,
+                    encoding: "UTF-8",
+                    complete: (results) => processCSVData(results.data),
+                    error: (err) => { throw new Error(`Error al procesar CSV: ${err.message}`); }
+                });
+            } catch (error) {
+                console.error("Fallo al cargar el catálogo:", error);
+                statusEl.innerText = `Error al cargar el catálogo. Revisa la URL o tu conexión.`;
+                statusEl.style.color = 'red';
+            }
+        }
+
+        function getCategoriaPrecios(d) {
+            const match = String(d).trim().match(/(.*?)\s*-\s*/);
+            return (match && match[1]) ? match[1].trim().replace(/"/g, '') : "General";
+        }
+
+        function processCSVData(data) {
+            const products = [], localPrices = {}, categories = new Set();
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length < 5 || !row[0]) continue;
+                
+                const priceType = row[2].trim().toUpperCase();
+                
+                // >>>>> CAMBIO CLAVE AQUÍ <<<<<
+                // Si el tipo de precio incluye "VIP", simplemente no procesamos esta fila de precio.
+                if (priceType.includes('VIP')) {
+                    continue; // Saltar a la siguiente iteración del bucle
+                }
+                
+                const sku = row[0].trim();
+                if (!localPrices[sku]) {
+                    const desc = row[1].trim();
+                    const cat = getCategoriaPrecios(desc);
+                    products.push({ sku, description: desc, family: sku.substring(0, 2), priceCategory: cat });
+                    localPrices[sku] = [];
+                    categories.add(cat);
+                }
+                
+                const priceNet = parseFloat(row[3]);
+                if (priceNet > 0) {
+                    localPrices[sku].push({ type: row[2].trim(), net: priceNet, gross: parseFloat(row[4]) || 0 });
+                }
+            }
+            allProducts = products.sort((a,b) => a.description.localeCompare(b.description));
+            pricesBySku = localPrices;
+            const catFilter = document.getElementById('categoryFilter');
+            Array.from(categories).sort().forEach(c => catFilter.innerHTML += `<option value="${c}">${c}</option>`);
+            clearProductDisplay();
+            updateOrderDisplay();
+            document.getElementById('loading-section').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+        }
+        
+        function clearProductDisplay() {
+            document.getElementById('productsContainer').innerHTML = '<div style="text-align:center;padding:40px;color:#666;">Ingrese un término de búsqueda para comenzar.</div>';
+        }
+
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            if (!searchTerm && !categoryFilter) {
+                clearProductDisplay();
+                return;
+            }
+            const itemsPerPage = document.getElementById('itemsPerPage').value;
+            let filtered = allProducts.filter(p => 
+                (searchTerm && (p.sku.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm))) ||
+                (categoryFilter && p.priceCategory === categoryFilter)
+            );
+            if (itemsPerPage !== 'all') filtered = filtered.slice(0, parseInt(itemsPerPage));
+            displayProducts(filtered);
+        }
+
+        function displayProducts(products) {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = products.length === 0 
+                ? '<div style="text-align:center;padding:20px;">No se encontraron productos para su búsqueda.</div>'
+                : `<div class="products-grid">${products.map(p => `
+                    <div class="product-card">
+                        <div class="product-sku">${p.sku}</div>
+                        <div class="product-description">${p.description}</div>
+                        <div class="quantity-input">
+                            <input type="number" min="1" value="1" id="qty-${p.sku}">
+                            <button class="btn btn-primary" onclick="addToOrder('${p.sku}')">Agregar</button>
+                        </div>
+                    </div>`).join('')}</div>`;
+        }
+        
+        function addToOrder(sku) {
+            const product = allProducts.find(p => p.sku === sku);
+            const quantity = parseInt(document.getElementById(`qty-${sku}`).value) || 1;
+            const existingItem = currentOrder.find(item => item.sku === sku);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+                existingItem.manualLock = false; 
+            } else {
+                currentOrder.push({ ...product, quantity, manualLock: false });
+            }
+            document.getElementById(`qty-${sku}`).value = 1;
+            updateAllPricesInOrder();
+        }
+
+        function removeFromOrder(index) {
+            currentOrder.splice(index, 1);
+            updateAllPricesInOrder();
+        }
+        
+        function updateQuantityInOrder(index, newQuantityStr) {
+            const newQuantity = parseInt(newQuantityStr);
+            if (!isNaN(newQuantity) && newQuantity > 0) {
+                currentOrder[index].quantity = newQuantity;
+                currentOrder[index].manualLock = false;
+                updateAllPricesInOrder();
+            } else {
+                updateOrderDisplay();
+            }
+        }
+
+        function updateAllPricesInOrder() {
+            const categoryQuantities = currentOrder.reduce((acc, item) => {
+                acc[item.priceCategory] = (acc[item.priceCategory] || 0) + item.quantity;
+                return acc;
+            }, {});
+            currentOrder.forEach(item => {
+                if (!item.manualLock) {
+                    item.priceData = getBestPrice(item.sku, categoryQuantities[item.priceCategory]);
+                }
+            });
+            updateOrderDisplay();
+        }
+        
+        function getTier(priceTypeStr) {
+            const type = (priceTypeStr || '').toUpperCase();
+            let minQty = 0;
+            const match = type.match(/(\d+)/);
+            if (type.includes('DETALLE')) minQty = 1;
+            else if (type.includes('MAYOR') && !match) minQty = 2;
+            else if (match) minQty = parseInt(match[1], 10);
+            return { type: priceTypeStr, minQty };
+        }
+        
+        function getBestPrice(sku, totalCategoryQuantity) {
+            const availablePrices = pricesBySku[sku] || [];
+            if (availablePrices.length === 0) return { type: "SIN PRECIO", net: 0, gross: 0 };
+            const tiers = availablePrices.map(p => ({ ...p, minQty: getTier(p.type).minQty }));
+            const applicableTiers = tiers.filter(t => totalCategoryQuantity >= t.minQty);
+            if (applicableTiers.length > 0) return applicableTiers.reduce((best, current) => current.minQty > best.minQty ? current : best);
+            return tiers.find(t => t.type.includes(document.getElementById('globalPriceSelector').value.toUpperCase())) || tiers[0];
+        }
+
+        function manuallySetPrice(index, newType) {
+            const item = currentOrder[index];
+            const newPrice = pricesBySku[item.sku].find(p => p.type === newType);
+            if (newPrice) {
+                item.priceData = newPrice;
+                item.manualLock = true;
+                updateOrderDisplay();
+            }
+        }
+        
+        function resetPrice(index) {
+            currentOrder[index].manualLock = false;
+            updateAllPricesInOrder();
+        }
+
+        function applyGlobalPrice() {
+            const globalType = document.getElementById('globalPriceSelector').value.toUpperCase();
+            let updatedCount = 0;
+            currentOrder.forEach(item => {
+                let targetPrice;
+                const availablePrices = pricesBySku[item.sku] || [];
+                if (globalType === 'MAYOR') {
+                    const tiers = availablePrices.map(p => ({ ...p, minQty: getTier(p.type).minQty }));
+                    const mayorTiers = tiers.filter(t => t.minQty > 1);
+                    if (mayorTiers.length > 0) {
+                        targetPrice = mayorTiers.reduce((best, current) => current.minQty < best.minQty ? current : best);
+                    }
+                } else {
+                    targetPrice = availablePrices.find(p => p.type.toUpperCase().includes(globalType));
+                }
+                if (targetPrice) {
+                    item.priceData = targetPrice;
+                    item.manualLock = true;
+                    updatedCount++;
+                }
+            });
+            if (updatedCount > 0) updateOrderDisplay();
+            else alert(`No se encontraron precios del tipo "${globalType}" para aplicar.`);
+        }
+
+        function updateOrderDisplay() {
+            const container = document.getElementById('orderItems');
+            const totalEl = document.getElementById('orderTotal');
+            const showPrices = document.getElementById('showPrices').value;
+
+            if (currentOrder.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">No hay productos en el pedido.</div>';
+                totalEl.textContent = '$0'; return;
+            }
+
+            let grandTotal = 0;
+            container.innerHTML = currentOrder.sort((a,b) => a.description.localeCompare(b.description)).map((item, index) => {
+                const originalIndex = currentOrder.indexOf(item);
+                const price = item.priceData;
+                const unitPrice = showPrices === 'BRUTO' ? price.gross : price.net;
+                const lineTotal = unitPrice * item.quantity;
+                grandTotal += lineTotal;
+                const currencyFormat = { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 };
+                const priceOptions = pricesBySku[item.sku].map(p => `<option value="${p.type}" ${p.type === price.type ? 'selected' : ''}>${p.type}</option>`).join('');
+
+                return `<div class="order-item">
+                    <button class="btn-remove-item" onclick="removeFromOrder(${originalIndex})">×</button>
+                    <div class="order-item-info">
+                        <div class="sku">${item.sku}</div>
+                        <div class="desc">${item.description}</div>
+                    </div>
+                    <div class="order-item-controls">
+                        <label>Cant:</label>
+                        <input type="number" value="${item.quantity}" min="1" onchange="updateQuantityInOrder(${originalIndex}, this.value)">
+                        <div class="price-details">
+                            <span class="unit-price">${unitPrice.toLocaleString('es-CL', currencyFormat)} c/u</span>
+                            <b class="line-total">${lineTotal.toLocaleString('es-CL')}</b>
+                        </div>
+                    </div>
+                    <div class="price-override-section">
+                        <select onchange="manuallySetPrice(${originalIndex}, this.value)">${priceOptions}</select>
+                        ${item.manualLock ? `<button class="btn-reset" onclick="resetPrice(${originalIndex})">Reset</button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+            totalEl.textContent = `${grandTotal.toLocaleString('es-CL')}`;
+        }
+        
+        function clearOrder() {
+            if (confirm('¿Deseas limpiar el pedido?')) {
+                currentOrder = [];
+                updateOrderDisplay();
+            }
+        }
+        
+        function generateExcelOutput() {
+            if (currentOrder.length === 0) { alert('No hay productos'); return; }
+            const showPrices = document.getElementById('showPrices').value;
+            let output = 'Cantidad\tCódigo de Barras, SKU o Número de Serie\tGlosa\tValor Unitario\n';
+            currentOrder.sort((a,b) => a.description.localeCompare(b.description)).forEach(item => {
+                const unitPrice = showPrices === 'BRUTO' ? item.priceData.gross : item.priceData.net;
+                output += `${item.quantity}\t${item.sku}\t${item.description}\t${Math.round(unitPrice)}\n`;
+            });
+            copyToClipboard(output, '¡Texto para Sistema copiado!');
+        }
+        
+        function generateWhatsappSummary() {
+            if (currentOrder.length === 0) { alert('No hay productos'); return; }
+            const showPrices = document.getElementById('showPrices').value;
+            const currencyFormat = { style: 'currency', currency: 'CLP' };
+            const grandTotal = currentOrder.reduce((sum, item) => sum + (showPrices === 'BRUTO' ? item.priceData.gross : item.priceData.net) * item.quantity, 0);
+            const groupedByCategory = currentOrder.reduce((acc, item) => {
+                if (!acc[item.priceCategory]) acc[item.priceCategory] = { items: [], totalQty: 0 };
+                acc[item.priceCategory].items.push(item);
+                acc[item.priceCategory].totalQty += item.quantity;
+                return acc;
+            }, {});
+
+            let note = '*Resumen de Pedido* 🛍️\n\n';
+            Object.keys(groupedByCategory).sort().forEach(category => {
+                const group = groupedByCategory[category];
+                note += `*${category}* (Total: ${group.totalQty} unidades)\n`;
+                group.items.sort((a,b) => a.description.localeCompare(b.description)).forEach(item => {
+                    const unitPrice = showPrices === 'BRUTO' ? item.priceData.gross : item.priceData.net;
+                    const lineTotal = unitPrice * item.quantity;
+                    note += `- ${item.quantity} x ${item.description} (${unitPrice.toLocaleString('es-CL', currencyFormat)}) = ${lineTotal.toLocaleString('es-CL', currencyFormat)}\n`;
+                });
+                note += '\n';
+            });
+            note += `--------------------\n*Total Estimado: ${grandTotal.toLocaleString('es-CL', currencyFormat)}*`;
+            
+            copyToClipboard(note, '¡Resumen para WhatsApp copiado!');
+        }
+
+        function generateSummaryNote() {
+            if (currentOrder.length === 0) { alert('No hay productos'); return; }
+            const delivery = document.getElementById('deliveryMode').value;
+            const docType = document.getElementById('documentType').value;
+            const unitsByCategory = currentOrder.reduce((acc, item) => {
+                acc[item.priceCategory] = (acc[item.priceCategory] || 0) + item.quantity;
+                return acc;
+            }, {});
+            const totalItems = currentOrder.reduce((sum, item) => sum + item.quantity, 0);
+            const categorySummary = Object.keys(unitsByCategory).sort().map(cat => `${unitsByCategory[cat]} ${cat}`).join(', ');
+            const finalLine = `BODEGA ${delivery}: ${categorySummary}// ADM ${docType} _Total ítems: ${totalItems}`;
+            copyToClipboard(finalLine, '¡Nota para Bodega copiada!');
+        }
+        
+        function downloadExcel() {
+            if (currentOrder.length === 0) { alert('No hay productos en el pedido.'); return; }
+            const clientName = document.getElementById('clientName').value.trim();
+            if (!clientName) { alert('Por favor, ingrese un nombre de cliente.'); return; }
+            const fileName = `${clientName.replace(/ /g, "_")}.csv`;
+            
+            const toCsvRow = (arr) => arr.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+            
+            let csvContent = "\uFEFF";
+
+            const metaHeaders = ['META_CLIENTE', 'META_MODALIDAD', 'META_DOCUMENTO', 'META_VISTA_PRECIOS'];
+            const metaValues = [
+                clientName,
+                document.getElementById('deliveryMode').value,
+                document.getElementById('documentType').value,
+                document.getElementById('showPrices').value
+            ];
+            csvContent += toCsvRow(metaHeaders) + '\r\n';
+            csvContent += toCsvRow(metaValues) + '\r\n\r\n';
+
+            const productHeaders = ['Cantidad', 'Código de Barras, SKU o Número de Serie', 'Glosa', 'Valor Unitario'];
+            csvContent += toCsvRow(productHeaders) + '\r\n';
+
+            currentOrder.sort((a,b) => a.description.localeCompare(b.description)).forEach(item => {
+                const showPrices = document.getElementById('showPrices').value;
+                const unitPrice = showPrices === 'BRUTO' ? item.priceData.gross : item.priceData.net;
+                const row = [item.quantity, item.sku, item.description, Math.round(unitPrice)];
+                csvContent += toCsvRow(row) + '\r\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadBsaleCsv() {
+            if (currentOrder.length === 0) { alert('No hay productos en el pedido.'); return; }
+            const clientName = document.getElementById('clientName').value.trim();
+            const fileName = `BSale_${clientName.replace(/ /g, "_") || 'pedido'}.csv`;
+
+            const headers = ['SKU', 'Cantidad', 'Neto Unitario', 'Descuento %'];
+            
+            let content = "\uFEFF";
+            content += headers.join('\t') + '\r\n';
+
+            currentOrder.forEach(item => {
+                const priceToExport = item.priceData.gross;
+                const row = [
+                    item.sku,
+                    item.quantity,
+                    Math.round(priceToExport),
+                    0 
+                ];
+                content += row.join('\t') + '\r\n';
+            });
+
+            const blob = new Blob([content], { type: 'text/tab-separated-values;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function triggerImport() {
+            document.getElementById('importFile').click();
+        }
+
+        function importOrder(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (currentOrder.length > 0 && !confirm('¿Importar este pedido? Se reemplazará el pedido actual.')) {
+                event.target.value = ''; return;
+            }
+
+            Papa.parse(file, {
+                header: false,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    const data = results.data;
+                    if (data.length > 1 && data[0][0] === 'META_CLIENTE') {
+                        const metaValues = data[1];
+                        document.getElementById('clientName').value = metaValues[0];
+                        document.getElementById('deliveryMode').value = metaValues[1];
+                        document.getElementById('documentType').value = metaValues[2];
+                        document.getElementById('showPrices').value = metaValues[3];
+                    }
+
+                    const headerRowIndex = data.findIndex(row => row[0] === 'Cantidad');
+                    if(headerRowIndex === -1) {
+                         alert('No se encontró la cabecera de productos en el archivo. No se puede importar.');
+                         return;
+                    }
+
+                    const productData = data.slice(headerRowIndex + 1);
+                    const newOrder = [];
+                    const notFound = [];
+
+                    productData.forEach(row => {
+                        const quantity = parseInt(row[0]);
+                        const sku = row[1];
+                        
+                        if (sku && quantity > 0) {
+                            const product = allProducts.find(p => p.sku === sku.trim());
+                            if (product) {
+                                newOrder.push({ ...product, quantity, manualLock: false });
+                            } else {
+                                notFound.push(sku);
+                            }
+                        }
+                    });
+
+                    currentOrder = newOrder;
+                    updateAllPricesInOrder();
+                    if (notFound.length > 0) {
+                        alert(`Se importó el pedido, pero los siguientes SKUs no se encontraron en el catálogo actual y fueron omitidos:\n${notFound.join(', ')}`);
+                    }
+                    event.target.value = '';
+                }
+            });
+        }
+
+        function copyToClipboard(text, message) {
+            const out = document.getElementById('copyOutput');
+            out.textContent = text;
+            out.style.display = 'block';
+            navigator.clipboard.writeText(text).then(() => alert(message), () => alert('Error al copiar.'));
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCatalogFromUrl();
+            document.getElementById('importFile').addEventListener('change', importOrder);
+            document.getElementById('showPrices').addEventListener('change', updateAllPricesInOrder);
+        });
+    </script>
+</body>
+</html>
