@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Constructor de Pedidos PRO v26 - Edición Limitada</title>
+    <title>Constructor de Pedidos PRO v26 - Edición Webalia</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         :root { --primary-grad: linear-gradient(135deg, #667eea 0%, #764ba2 100%); --bg-light: rgba(255, 255, 255, 0.95); --text-dark: #2c3e50; --accent-blue: #3498db; --accent-green: #28a745; --accent-red: #dc3545; --btn-whatsapp: #25D366; }
@@ -41,8 +41,8 @@
         .order-item-controls { display: flex; align-items: center; gap: 10px; }
         .order-item-controls input[type="number"] { width: 60px; padding: 5px; text-align: center; }
         .price-details { text-align: right; }
-        .price-details .unit-price { font-size: 12px; color: #555; display: block; }
-        .price-details .line-total { font-size: 14px; font-weight: bold; }
+        .unit-price-input { width: 80px; text-align: right; padding: 5px; border: 1px solid #ccc; border-radius: 4px; } /* Estilo para el input de precio */
+        .price-details .line-total { font-size: 14px; font-weight: bold; display: block; margin-top: 5px;}
         .price-override-section { display: flex; gap: 5px; align-items: center; }
         .price-override-section select { font-size: 12px; padding: 5px; flex-grow: 1; }
         .btn-reset { background: #f0ad4e; color: white; border: 0; border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; }
@@ -152,9 +152,9 @@
                 const priceType = row[2].trim().toUpperCase();
                 
                 // >>>>> CAMBIO CLAVE AQUÍ <<<<<
-                // Si el tipo de precio incluye "VIP", simplemente no procesamos esta fila de precio.
+                // Si el tipo de precio es VIP, no procesamos esta fila de precio.
                 if (priceType.includes('VIP')) {
-                    continue; // Saltar a la siguiente iteración del bucle
+                    continue; 
                 }
                 
                 const sku = row[0].trim();
@@ -245,6 +245,30 @@
                 updateOrderDisplay();
             }
         }
+        
+        function manuallyUpdatePrice(index, newPriceStr) {
+            const newPrice = parseFloat(newPriceStr);
+            const item = currentOrder[index];
+            const showPrices = document.getElementById('showPrices').value;
+
+            if (isNaN(newPrice) || newPrice < 0) {
+                updateOrderDisplay();
+                return;
+            }
+
+            item.manualLock = true;
+            
+            if (showPrices === 'BRUTO') {
+                item.priceData.gross = newPrice;
+                item.priceData.net = newPrice / 1.19;
+            } else { // NETO
+                item.priceData.net = newPrice;
+                item.priceData.gross = newPrice * 1.19;
+            }
+
+            item.priceData.type = 'MANUAL';
+            updateOrderDisplay();
+        }
 
         function updateAllPricesInOrder() {
             const categoryQuantities = currentOrder.reduce((acc, item) => {
@@ -280,6 +304,7 @@
 
         function manuallySetPrice(index, newType) {
             const item = currentOrder[index];
+            if (newType === 'MANUAL') return; // No hacer nada si se re-selecciona MANUAL
             const newPrice = pricesBySku[item.sku].find(p => p.type === newType);
             if (newPrice) {
                 item.priceData = newPrice;
@@ -290,6 +315,7 @@
         
         function resetPrice(index) {
             currentOrder[index].manualLock = false;
+            currentOrder[index].priceData.type = ''; // Limpiar el tipo manual
             updateAllPricesInOrder();
         }
 
@@ -335,8 +361,11 @@
                 const unitPrice = showPrices === 'BRUTO' ? price.gross : price.net;
                 const lineTotal = unitPrice * item.quantity;
                 grandTotal += lineTotal;
-                const currencyFormat = { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 };
-                const priceOptions = pricesBySku[item.sku].map(p => `<option value="${p.type}" ${p.type === price.type ? 'selected' : ''}>${p.type}</option>`).join('');
+                
+                let priceOptions = (pricesBySku[item.sku] || []).map(p => `<option value="${p.type}" ${p.type === price.type ? 'selected' : ''}>${p.type}</option>`).join('');
+                if (item.manualLock && item.priceData.type === 'MANUAL') {
+                    priceOptions = `<option value="MANUAL" selected>MANUAL</option>${priceOptions}`;
+                }
 
                 return `<div class="order-item">
                     <button class="btn-remove-item" onclick="removeFromOrder(${originalIndex})">×</button>
@@ -345,10 +374,9 @@
                         <div class="desc">${item.description}</div>
                     </div>
                     <div class="order-item-controls">
-                        <label>Cant:</label>
                         <input type="number" value="${item.quantity}" min="1" onchange="updateQuantityInOrder(${originalIndex}, this.value)">
                         <div class="price-details">
-                            <span class="unit-price">${unitPrice.toLocaleString('es-CL', currencyFormat)} c/u</span>
+                            <input type="number" class="unit-price-input" value="${Math.round(unitPrice)}" onchange="manuallyUpdatePrice(${originalIndex}, this.value)">
                             <b class="line-total">${lineTotal.toLocaleString('es-CL')}</b>
                         </div>
                     </div>
